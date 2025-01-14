@@ -28,18 +28,28 @@ export class TransportFallback implements Transport {
     if (!this.useWebSocket) {
       return this.transport.request(payload); // Directly use HTTP if WebSocket is not available
     }
-
+  
     try {
-      return await this.transport.request(payload);
-    } catch (error) {
-      // Fallback to HTTP only ONCE if WebSocket fails
-      if (this.useWebSocket) {
-        console.warn("WebSocket connection failed, falling back to HTTP.", error); // Log the error
-        this.transport = new TransportHttp(this.httpUrl, this.timeout);
-        this.useWebSocket = false; // Prevent further WebSocket attempts
-        return this.transport.request(payload);
+      const wsResponse = await this.transport.request(payload);
+      // 检查响应是否包含错误
+      if (wsResponse && typeof wsResponse === 'object' && 'error' in wsResponse) {
+        throw new Error(`RPC Error: ${wsResponse.error}`);
       }
-      throw error; // Re-throw if it's not a WebSocket related error after fallback
+      return wsResponse;
+    } catch (error) {
+      if (this.useWebSocket) {
+        console.warn("WebSocket request failed, falling back to HTTP");
+        this.transport = new TransportHttp(this.httpUrl, this.timeout);
+        this.useWebSocket = false;
+        // 尝试HTTP请求
+        const httpResponse = await this.transport.request(payload);
+        // 同样检查HTTP响应中的错误
+        if (httpResponse && typeof httpResponse === 'object' && 'error' in httpResponse) {
+          throw new Error(`HTTP RPC Error: ${httpResponse.error}`);
+        }
+        return httpResponse;
+      }
+      throw error;
     }
   }
 }

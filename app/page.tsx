@@ -57,6 +57,7 @@ export default function Home() {
     } catch (error) {
       const errorMessage = 'Error getting tip header: ' + error;
       addLog(errorMessage);
+      addLog(`rpc url: ${getClientUrl(testnetClient)}`);
     }
   };
 
@@ -76,6 +77,7 @@ export default function Home() {
     } catch (error) {
       const errorMessage = 'Error getting tip header: ' + error;
       addLog(errorMessage);
+      addLog(`rpc url: ${getClientUrl(mainnetClient)}`);
     }
   };
 
