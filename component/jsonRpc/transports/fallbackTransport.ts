@@ -8,45 +8,39 @@ import { TransportHttp } from "./http";
  */
 export class TransportFallback implements Transport {
   private transport: Transport;
-  private hasWebSocket: boolean;
   private wsUrl: string;
   private httpUrl: string;
   private timeout: number;
-  private wsInitialized = false;
+  private useWebSocket: boolean; // Flag to track if we're using WebSocket
 
   constructor(wsUrl: string, httpUrl: string, timeout = 5000) {
     this.wsUrl = wsUrl;
     this.httpUrl = httpUrl;
     this.timeout = timeout;
-    this.hasWebSocket = typeof WebSocket !== "undefined";
-    // Start with HTTP transport if WebSocket is not supported
-    this.transport = this.hasWebSocket
+    this.useWebSocket = typeof WebSocket !== "undefined"; // Initialize based on WebSocket availability
+
+    this.transport = this.useWebSocket
       ? new TransportWebSocket(wsUrl, timeout)
       : new TransportHttp(httpUrl, timeout);
-    console.log(`FallbackTransport initialized with ${this.hasWebSocket ? 'WebSocket' : 'HTTP'} transport`);
   }
 
   async request(payload: JsonRpcPayload): Promise<unknown> {
-    console.log(`FallbackTransport handling request with ${this.transport.constructor.name}`);
-    // If WebSocket is not supported or we've already fallen back to HTTP, just use current transport
-    if (!this.hasWebSocket || !this.wsInitialized) {
-      try {
-        if (this.hasWebSocket && !this.wsInitialized) {
-          console.log('Attempting first WebSocket request...');
-          this.wsInitialized = true;
-          // 强制触发错误，这样就会fallback到HTTP
-          throw new Error('Simulated WebSocket error');
-        }
-        return await this.transport.request(payload);
-      } catch (error) {
-        // 移除条件检查，让任何错误都触发fallback
-        console.log('WebSocket request failed, falling back to HTTP transport');
-        this.transport = new TransportHttp(this.httpUrl, this.timeout);
-        return await this.transport.request(payload);
-      }
+    if (!this.useWebSocket) {
+      return this.transport.request(payload); // Directly use HTTP if WebSocket is not available
     }
 
-    // If we're already using HTTP transport, just use it
-    return await this.transport.request(payload);
+    try {
+      return await this.transport.request(payload);
+    } catch (error) {
+      // Fallback to HTTP only ONCE if WebSocket fails
+      if (this.useWebSocket) {
+        console.warn("WebSocket connection failed, falling back to HTTP.", error); // Log the error
+        this.transport = new TransportHttp(this.httpUrl, this.timeout);
+        this.useWebSocket = false; // Prevent further WebSocket attempts
+        return this.transport.request(payload);
+      }
+      throw error; // Re-throw if it's not a WebSocket related error after fallback
+    }
   }
 }
+

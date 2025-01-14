@@ -8,6 +8,7 @@ export default function Home() {
   const [logs, setLogs] = React.useState<string[]>([]);
 
   const addLog = (message: string) => {
+    console.log(message);
     setLogs(prevLogs => [...prevLogs, message]);
   };
 
@@ -35,54 +36,45 @@ export default function Home() {
 
   const getClientUrl = (client: ClientPublicMainnet | ClientPublicTestnet) => {
     const jsonString = JSON.stringify(client.requestor.transport);
+    //console.log(jsonString);
     const json = JSON.parse(jsonString);
     return json.transport.url;
   };
 
   const onConnectTestNet = async () => {
-    console.log("connect testnet");
     addLog("connect testnet");
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const testnetClient = new ClientPublicTestnet();
     const url = getClientUrl(testnetClient);
-    console.log('rpc url:', url);
     addLog(`rpc url: ${url}`);
     const getTipHeader = testnetClient.buildSender("get_tip_header");
     try {
       const tipHeader = await getTipHeader() as TipHeader;
       const tipBlock = hexToBigInt(tipHeader.number).toString();
-      console.log('Current tip block:', tipBlock);
       addLog(`Current tip block: ${tipBlock}`);
       const newUrl = getClientUrl(testnetClient);
-      console.log('rpc url:', newUrl);
       addLog(`rpc url: ${newUrl}`);
     } catch (error) {
       const errorMessage = 'Error getting tip header: ' + error;
-      console.error(errorMessage);
       addLog(errorMessage);
     }
   };
 
   const onConnectMainNet = async () => {
-    console.log("connect mainnet");
     addLog("connect mainnet");
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     const mainnetClient = new ClientPublicMainnet();
     const url = getClientUrl(mainnetClient);
-    console.log('rpc url:', url);
     addLog(`rpc url: ${url}`);
     const getTipHeader = mainnetClient.buildSender("get_tip_header");
     try {
       const tipHeader = await getTipHeader() as TipHeader;
       const tipBlock = hexToBigInt(tipHeader.number).toString();
-      console.log('Current tip block:', tipBlock);
       addLog(`Current tip block: ${tipBlock}`);
       const newUrl = getClientUrl(mainnetClient);
-      console.log('rpc url:', newUrl);
       addLog(`rpc url: ${newUrl}`);
     } catch (error) {
       const errorMessage = 'Error getting tip header: ' + error;
-      console.error(errorMessage);
       addLog(errorMessage);
     }
   };
